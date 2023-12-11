@@ -1,0 +1,53 @@
+version: "3.9"
+services:
+  postgres:
+    image: postgres:13.3
+    environment:
+      POSTGRES_DB: "chat_db"
+      POSTGRES_USER: "user_user"
+      POSTGRES_PASSWORD: "pg_pass"
+    ports:
+      - "5432:5432"
+  cache:
+    image: redis:6.2-alpine
+    restart: always
+    ports:
+      - '6379:6379'
+    command: redis-server --save 20 1 --loglevel warning
+  backend:
+    build:
+      context: .
+      dockerfile: ./docker/backend/Dockerfile
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/backend
+    command: python manage.py runserver 0.0.0.0:8000
+    image: backend_app:9
+    depends_on:
+      - cache
+      - postgres
+  telegram:
+    build:
+      context: .
+      dockerfile: ./docker/telegram/Dockerfile
+    ports:
+      - "7000:7000"
+    volumes:
+      - ./telegram:/telegram
+    command: python main.py
+    image: telegram_app:5
+    depends_on:
+      - backend
+  vk:
+    build:
+      context: .
+      dockerfile: ./docker/vk/Dockerfile
+    ports:
+      - "6000:6000"
+    volumes:
+      - ./vk:/vk
+    command: python main.py
+    image: vk_app:4
+    depends_on:
+      - backend
